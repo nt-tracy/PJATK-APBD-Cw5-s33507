@@ -73,6 +73,8 @@ public class RoomsController : ControllerBase
     //     }));
     // }
     
+    public static List<Room> GetRoomsList() => _rooms;
+    
     [HttpGet]
     public IActionResult GetRooms(
         [FromQuery] double? minCapacity, 
