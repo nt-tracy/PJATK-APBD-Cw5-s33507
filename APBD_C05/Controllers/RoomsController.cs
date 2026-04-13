@@ -57,11 +57,54 @@ public class RoomsController : ControllerBase
             IsActive = true
         }
     ];
-
-    [HttpGet] 
-    public IActionResult GetAll()
+    
+    // [HttpGet] 
+    // public IActionResult GetAll()
+    // {
+    //     return Ok(_rooms.Select(e => new RoomDto()
+    //     {
+    //         Id = e.Id,
+    //         Name = e.Name,
+    //         BuildingCode = e.BuildingCode,
+    //         Floor = e.Floor,
+    //         Capacity = e.Capacity,
+    //         HasProjector = e.HasProjector,
+    //         IsActive = e.IsActive
+    //     }));
+    // }
+    
+    [HttpGet]
+    public IActionResult GetRooms(
+        [FromQuery] double? minCapacity, 
+        [FromQuery] bool? hasProjector, 
+        [FromQuery] bool? activeOnly)
     {
-        return Ok(_rooms.Select(e => new RoomDto()
+        if (minCapacity == null && hasProjector == null && activeOnly == null)
+        {
+            return Ok(_rooms.Select(e => new RoomDto()
+            {
+                Id = e.Id,
+                Name = e.Name,
+                BuildingCode = e.BuildingCode,
+                Floor = e.Floor,
+                Capacity = e.Capacity,
+                HasProjector = e.HasProjector,
+                IsActive = e.IsActive
+            }));        }
+        
+        
+        var filtered = _rooms.AsEnumerable();
+
+        if (minCapacity.HasValue)
+            filtered = filtered.Where(r => r.Capacity >= minCapacity.Value);
+
+        if (hasProjector.HasValue)
+            filtered = filtered.Where(r => r.HasProjector == hasProjector.Value);
+
+        if (activeOnly.HasValue && activeOnly.Value)
+            filtered = filtered.Where(r => r.IsActive);
+
+        return Ok(filtered.Select(e => new RoomDto()
         {
             Id = e.Id,
             Name = e.Name,
@@ -73,6 +116,18 @@ public class RoomsController : ControllerBase
         }));
     }
 
+    private static RoomDto MapToDto(Room e) => new()
+    {
+        Id = e.Id,
+        Name = e.Name,
+        BuildingCode = e.BuildingCode,
+        Floor = e.Floor,
+        Capacity = e.Capacity,
+        HasProjector = e.HasProjector,
+        IsActive = e.IsActive
+    };
+    
+    
     [HttpGet]
     [Route("{id:int}")]
     public IActionResult GetById(int id)
@@ -90,11 +145,10 @@ public class RoomsController : ControllerBase
             Capacity = e.Capacity,
             HasProjector = e.HasProjector,
             IsActive = e.IsActive
-        }));
+        }).Where(e => e.Id == id));
     }
 
-    [HttpGet]
-    [Route("buildingCode/{buildingCode:string}")]
+    [HttpGet("building/{buildingCode}")]
     public IActionResult GetRoomsFromBuildingCode(string buildingCode)
     {
         var code = _rooms.FirstOrDefault(e => e.BuildingCode == buildingCode);
@@ -112,6 +166,65 @@ public class RoomsController : ControllerBase
             IsActive = e.IsActive
         }).Where(e => e.BuildingCode == buildingCode));
     }
+
+    [HttpPost]
+    public IActionResult AddRoom([FromBody]  RoomDto roomDto)
+    {
+        var room = new Room()
+        {
+            Id = roomDto.Id,
+            Name = roomDto.Name,
+            BuildingCode = roomDto.BuildingCode,
+            Floor = roomDto.Floor,
+            Capacity = roomDto.Capacity,
+            HasProjector = roomDto.HasProjector,
+            IsActive = roomDto.IsActive
+        };
+        
+        _rooms.Add(room);
+
+        return CreatedAtAction(nameof(GetById), new { id = room.Id }, room);
+
+    }
+
+    [HttpPut]
+    [Route("{id:int}")]
+    public IActionResult Update(int id, [FromBody] RoomDto roomDto)
+    {
+        var room = _rooms.FirstOrDefault(e => e.Id == id);
+
+        if (room is null)
+        {
+            return NotFound($"Pokój o id {id} nie istnieje!");
+        }
+        
+        room.Name = roomDto.Name;
+        room.BuildingCode = roomDto.BuildingCode;
+        room.Floor = roomDto.Floor;
+        room.Capacity = roomDto.Capacity;
+        room.HasProjector = roomDto.HasProjector;
+        room.IsActive = roomDto.IsActive;
+        
+        return NoContent();
+    }
+
     
-    
+    [HttpDelete]
+    [Route("{id:int}")]
+    public IActionResult Delete(int id)
+    {
+        var room = _rooms.FirstOrDefault(e => e.Id == id);
+
+        if (room is null)
+        {
+            return NotFound($"Pokój o id {id} nie istnieje!");
+        }
+
+        _rooms.Remove(room);
+        return NoContent();
+    }
+
+
+
+
 }
